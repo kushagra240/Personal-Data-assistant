@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Gemini Settings
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
-    gemini_model_id: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL_ID")
+    gemini_model_id: str = Field(default="gemini-3.5-flash", validation_alias="GEMINI_MODEL_ID")
     
     # Vector DB / Embeddings Settings
     embedding_model_id: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", validation_alias="EMBEDDING_MODEL_ID")
