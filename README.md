@@ -14,7 +14,7 @@ Migrated from **IBM Cloud Watsonx** to fully free-tier open-source infrastructur
     *   **Breathing Interactions**: Buttons scale up by 6% (`scale-106`) on hover and compress (`scale-96`) on click using custom cubic-bezier transitions.
     *   **Vortex Glow Logo**: Embedded a central spinning glowing disc animation to visually represent "Vortex AI" processing states.
 *   **Drag-and-Drop Ingestion**: Upload files easily with visual progress steps showing PDF loading, text chunk splitting, embedding extraction, and Chroma indexing.
-*   **Dual LLM Provider Support**: Native drop-in support for **Hugging Face Inference API** (using Llama-3.1-8B-Instruct) or **Google Gemini API** (using gemini-2.5-flash).
+*   **Dual LLM Provider Support**: Native drop-in support for **Hugging Face Inference API** (using Llama-3.1-8B-Instruct) or **Google Gemini API** (using gemini-3.5-flash).
 *   **Optimized Asynchronous API**: FastAPI backend utilizing standard sync-def endpoints routed to threadpools, preventing heavy GPU/inference tasks from blocking the server's event loop.
 *   **Session Chat History**: Keeps session history of previous exchanges to feed contextual history directly into the LangChain `RetrievalQA` chain.
 *   **Containerized Orchestration**: Production-ready, multi-stage `Dockerfile` with embedding model pre-caching to guarantee sub-second startup times, and `docker-compose.yml` for local deployment.
@@ -66,7 +66,7 @@ project/
 Query Embeddings -> Chroma DB                                                     Context + Query -> Prompt Template
        │                                                                                  │
        ▼                                                                                  ▼
-Returns Top K relevant text chunks ───────────────────────────────────────────> Llama 3.1 (HF) / Gemini 2.5 (Google)
+Returns Top K relevant text chunks ───────────────────────────────────────────> Llama 3.1 (HF) / Gemini 3.5 (Google)
                                                                                           │
                                                                                           ▼
                                                                                    [JSON Answer Output]
