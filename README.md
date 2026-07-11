@@ -229,6 +229,24 @@ This application is ready to deploy on **Render** or **Hugging Face Spaces** for
 
 ---
 
+## 🔒 Security Hardening
+
+This application includes a robust security architecture to protect assets, API tokens, and user endpoints:
+
+*   **Zero Hardcoded Secrets**: All backend credentials are isolated in a `.env` file (not committed to Git) and configured via a modular `Settings` singleton.
+*   **Docker Secret Protection**: A `.dockerignore` file prevents local `.env` files from being copied and baked into Docker images during deployment builds.
+*   **CORS Lockout**: Permissive CORS access (`*`) is disabled. Allowed origins are locked to localhost by default and are fully configurable using the `CORS_ALLOWED_ORIGINS` variable.
+*   **API Rate Limiting**: Simple sliding-window IP-based rate limiting is implemented to protect the server from Denial of Service (DoS) and excessive API billings (10 document uploads/min and 30 chat queries/min).
+*   **File Upload Validation**: Restricts uploads strictly to `application/pdf` MIME types, validates filenames against path traversal attacks, and limits file sizes to a maximum of 15MB.
+*   **Error Masking**: Raw traceback details and system exceptions are hidden from the HTTP responses and logged internally on the server, preventing information exposure.
+
+### Deployment Security Instructions
+When deploying the app to production hosts (e.g. Render, Railway, Hugging Face Spaces):
+1.  **Use the Host Platform's Secrets Manager UI**: Never push a `.env` file containing real API keys to the repository or deploy branch. Instead, add `GEMINI_API_KEY`, `CORS_ALLOWED_ORIGINS`, etc., using the platform's Environment Variables panel.
+2.  **Explicitly Restrict CORS**: Change `CORS_ALLOWED_ORIGINS` to only include the production URL of your frontend web service.
+
+---
+
 ## 📝 Portfolio Details
 
 ### Recruiter & Technical Interview Talking Points

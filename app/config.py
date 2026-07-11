@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model_id: str = Field(default="gemini-3.5-flash", validation_alias="GEMINI_MODEL_ID")
     
+    # CORS Settings
+    cors_allowed_origins: str = Field(default="http://localhost:8000,http://127.0.0.1:8000", validation_alias="CORS_ALLOWED_ORIGINS")
+    
     # Vector DB / Embeddings Settings
     embedding_model_id: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", validation_alias="EMBEDDING_MODEL_ID")
     chroma_db_dir: str = Field(default="./data/chroma_db", validation_alias="CHROMA_DB_DIR")
