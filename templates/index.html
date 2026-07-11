@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex AI - PDF RAG Platform</title>
+    <!-- Google Fonts: Inter & Space Grotesk -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Panel -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-wrapper">
+                    <div class="vortex-glow-ring"></div>
+                    <i class="fa-solid fa-compact-disc logo-icon"></i>
+                </div>
+                <div class="logo-text">
+                    <span class="logo-title">VORTEX <span class="accent-text">AI</span></span>
+                    <p class="sidebar-tagline">Cognitive Document RAG</p>
+                </div>
+            </div>
+
+            <!-- Upload Panel -->
+            <div class="sidebar-section">
+                <h3 class="section-title"><i class="fa-solid fa-folder-open"></i> Document Ingestion</h3>
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" accept=".pdf" class="hidden-file-input">
+                    <i class="fa-solid fa-circle-notch fa-spin upload-spinner hidden" id="uploadSpinner"></i>
+                    <i class="fa-solid fa-arrow-up-from-bracket upload-icon" id="uploadIcon"></i>
+                    <p class="upload-text">Upload PDF Context</p>
+                    <p class="upload-subtext">Drag & drop or click to search</p>
+                </div>
+                
+                <!-- Upload Progress -->
+                <div class="upload-progress-container hidden" id="uploadProgressContainer">
+                    <div class="progress-bar-wrapper">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <div class="progress-status">
+                        <span id="progressText">Analyzing...</span>
+                        <span id="progressPercent" class="tabular-nums">0%</span>
+                    </div>
+                </div>
+
+                <!-- Loaded Document Details (Tonal Nesting) -->
+                <div class="doc-card hidden" id="docCard">
+                    <i class="fa-solid fa-file-pdf doc-card-icon"></i>
+                    <div class="doc-card-details">
+                        <h4 class="doc-name" id="docName">document.pdf</h4>
+                        <p class="doc-status"><i class="fa-solid fa-shield-halved text-success"></i> Anchored & Indexed</p>
+                    </div>
+                    <button class="doc-remove-btn" id="removeDocBtn" title="Clear context">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Indicators -->
+            <div class="sidebar-section system-indicators">
+                <h3 class="section-title"><i class="fa-solid fa-network-wired"></i> Pipeline Architecture</h3>
+                <div class="indicator-row">
+                    <span>Inference Model</span>
+                    <span class="badge" id="llmEngineBadge">Hugging Face</span>
+                </div>
+                <div class="indicator-row">
+                    <span>Vector DB Store</span>
+                    <span class="badge badge-warning" id="indexStatusBadge">No Document</span>
+                </div>
+                <div class="indicator-row">
+                    <span>Execution Device</span>
+                    <span class="badge badge-success" id="hardwareBadge"><i class="fa-solid fa-microchip"></i> GPU Auto</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <p>Enterprise portfolio collection</p>
+                <div class="tech-stack-tags">
+                    <span>FastAPI</span>
+                    <span>LangChain</span>
+                    <span>ChromaDB</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-workspace">
+            <!-- Header -->
+            <header class="chat-header">
+                <div class="active-context">
+                    <span class="context-label">Context Session:</span>
+                    <span class="context-value" id="currentContextName">Load a PDF document to instantiate chat</span>
+                </div>
+                <div class="header-actions">
+                    <button class="action-btn" id="clearHistoryBtn" title="Reset chat history">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                </div>
+            </header>
+
+            <!-- Chat Messages Container -->
+            <div class="chat-messages" id="chatMessages">
+                <!-- Welcome/Instructional Screen -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-hero">
+                        <div class="vortex-ambient-glow"></div>
+                        <i class="fa-solid fa-circle-nodes welcome-icon"></i>
+                        <h2>VORTEX AI ENGINE</h2>
+                        <p>A cognitive Retrieval-Augmented Generation agent that splits, embeds, and indexes document pages to deliver hallucination-free, context-bounded answers.</p>
+                    </div>
+                    <div class="onboarding-steps">
+                        <div class="step">
+                            <div class="step-num">01</div>
+                            <h4>Load PDF Context</h4>
+                            <p>Upload a document. The engine tokenizes and saves chunks into Chroma DB vector stores.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">02</div>
+                            <h4>Submit Prompt</h4>
+                            <p>Ask details, statistics, or summaries. Vector search retrieves matching segment nodes.</p>
+                        </div>
+                        <div class="step">
+                            <div class="step-num">03</div>
+                            <h4>Inference Output</h4>
+                            <p>Vortex synthesizes custom responses grounded strictly within the document text.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input Area -->
+            <div class="chat-input-wrapper">
+                <div class="chat-input-form-container">
+                    <form class="chat-input-form" id="chatForm">
+                        <input type="text" id="userInput" placeholder="Ask a question about the loaded document..." autocomplete="off" disabled>
+                        <button type="submit" id="sendBtn" class="send-btn" disabled>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+                <div class="input-tagline">
+                    <i class="fa-solid fa-circle-check"></i> Isolated session active. All prompt responses generated by local vector-retrieval pipeline.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
