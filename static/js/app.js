@@ -237,9 +237,19 @@ document.addEventListener("DOMContentLoaded", () => {
         handleFileUpload(file);
     });
 
-    removeDocBtn.addEventListener("click", () => {
-        setDocumentEmptyState();
-        showToast("Model context cleared.", "success");
+    removeDocBtn.addEventListener("click", async () => {
+        try {
+            const res = await fetch("/reset", { method: "POST" });
+            if (res.ok) {
+                setDocumentEmptyState();
+                showToast("Model context cleared.", "success");
+            } else {
+                showToast("Failed to clear context on server.", "error");
+            }
+        } catch (err) {
+            console.error("Error clearing context:", err);
+            showToast("Failed to clear context on server.", "error");
+        }
     });
 
     // 5. Chat Communication Operations
@@ -298,10 +308,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Reset Session Chat
-    clearHistoryBtn.addEventListener("click", () => {
+    clearHistoryBtn.addEventListener("click", async () => {
         if (!confirm("Reset chat history for this Vortex session?")) return;
-        clearChatDisplay();
-        window.location.reload();
+        try {
+            const res = await fetch("/reset", { method: "POST" });
+            if (res.ok) {
+                clearChatDisplay();
+                window.location.reload();
+            } else {
+                showToast("Failed to reset session on server.", "error");
+            }
+        } catch (err) {
+            console.error("Error resetting session:", err);
+            showToast("Failed to reset session on server.", "error");
+        }
     });
 
     // 6. UI Rendering Helpers

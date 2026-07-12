@@ -76,3 +76,30 @@ def test_chat_history_populated(client, mock_rag_pipeline):
     data = response.json()
     assert len(data["history"]) == 2
     assert data["history"][0] == {"question": "Query 1", "answer": "Answer 1"}
+
+def test_reset_session(client, mock_rag_pipeline):
+    """Tests that sending a POST request to /reset successfully clears pipeline state."""
+    # Setup mock loaded state
+    mock_rag_pipeline.qa_chain = object()
+    mock_rag_pipeline.current_pdf = "sample.pdf"
+    mock_rag_pipeline.chat_history = [("Query", "Answer")]
+    
+    # Define custom reset mock since the fixture overrides methods
+    def mock_reset():
+        mock_rag_pipeline.qa_chain = None
+        mock_rag_pipeline.current_pdf = None
+        mock_rag_pipeline.chat_history = []
+    
+    mock_rag_pipeline.reset = mock_reset
+    
+    response = client.post("/reset")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Session reset successfully."}
+    
+    # Verify health and history reflect cleared state
+    health_response = client.get("/health")
+    assert health_response.json()["has_document_loaded"] is False
+    assert health_response.json()["loaded_document"] is None
+    
+    history_response = client.get("/history")
+    assert history_response.json() == {"history": []}

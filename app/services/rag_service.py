@@ -180,5 +180,12 @@ class RAGPipeline:
         logger.info("Updated chat history.")
         return answer.strip()
 
+    def reset(self):
+        """Resets the pipeline context, clearing the active QA chain, document, and chat history."""
+        self.qa_chain = None
+        self.current_pdf = None
+        self.chat_history = []
+        logger.info("RAG pipeline state cleared successfully.")
+
 # Singleton instance of RAG pipeline
 rag_pipeline = RAGPipeline()

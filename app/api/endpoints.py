@@ -152,3 +152,16 @@ def process_question(payload: QuestionRequest, _=Depends(message_rate_limiter.ch
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Inference execution error."
         )
+
+@router.post("/reset")
+def reset_session():
+    """Resets the RAG pipeline session context (clears active QA chain, document, and chat history)."""
+    try:
+        rag_pipeline.reset()
+        return {"message": "Session reset successfully."}
+    except Exception as e:
+        logger.error(f"Failed to reset RAG pipeline session context: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset session context."
+        )
