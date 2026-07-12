@@ -34,7 +34,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY . .
 
 # Pre-download HuggingFace Embeddings Model to avoid cold start latency
-RUN python -c "from langchain_community.embeddings import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')"
+RUN python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')"
 
 # Ensure upload, db, and logging directories exist
 RUN mkdir -p data/uploads data/chroma_db logs
