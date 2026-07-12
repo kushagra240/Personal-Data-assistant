@@ -9,6 +9,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_core.prompts import PromptTemplate
 
 class RAGPipeline:
     def __init__(self):
@@ -52,8 +53,8 @@ class RAGPipeline:
                 repo_id=settings.hf_model_id,
                 task="text-generation",
                 huggingfacehub_api_token=settings.huggingfacehub_api_token,
-                temperature=0.1,
-                max_new_tokens=600,
+                temperature=settings.llm_temperature,
+                max_new_tokens=settings.llm_max_new_tokens,
             )
             self.llm_hub = ChatHuggingFace(llm=base_llm)
             logger.info(f"ChatHuggingFace LLM initialized with model '{settings.hf_model_id}'.")
@@ -74,8 +75,8 @@ class RAGPipeline:
             self.llm_hub = ChatGoogleGenerativeAI(
                 model=settings.gemini_model_id,
                 google_api_key=settings.gemini_api_key,
-                temperature=0.1,
-                max_output_tokens=600,
+                temperature=settings.llm_temperature,
+                max_output_tokens=settings.llm_max_new_tokens,
             )
             logger.info(f"ChatGoogleGenerativeAI LLM initialized with model '{settings.gemini_model_id}'.")
         elif settings.llm_provider == "watsonx":
@@ -163,6 +164,20 @@ class RAGPipeline:
         if settings.retriever_search_type == "mmr":
             search_kwargs["lambda_mult"] = settings.retriever_lambda_mult
             
+        prompt_template = """Use the following pieces of context to answer the question at the end. 
+If you don't know the answer, just say that you don't know, don't try to make up an answer.
+Provide a detailed, comprehensive, and well-structured response. Organize your answer with clear points, bullet points, or sections if appropriate.
+
+Context:
+{context}
+
+Question: {question}
+Helpful Answer:"""
+        
+        PROMPT = PromptTemplate(
+            template=prompt_template, input_variables=["context", "question"]
+        )
+
         self.qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm_hub,
             chain_type="stuff",
@@ -171,7 +186,8 @@ class RAGPipeline:
                 search_kwargs=search_kwargs
             ),
             return_source_documents=False,
-            input_key="question"
+            input_key="question",
+            chain_type_kwargs={"prompt": PROMPT}
         )
         self.current_pdf = os.path.basename(file_path)
         # Clear chat history for the new document

@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     
     # LLM Settings: 'huggingface', 'gemini', or 'watsonx'
     llm_provider: str = Field(default="huggingface", validation_alias="LLM_PROVIDER")
+    llm_max_new_tokens: int = Field(default=1024, validation_alias="LLM_MAX_NEW_TOKENS")
+    llm_temperature: float = Field(default=0.1, validation_alias="LLM_TEMPERATURE")
     
     # Hugging Face Settings
     huggingfacehub_api_token: str = Field(default="", validation_alias="HUGGINGFACEHUB_API_TOKEN")
@@ -36,7 +38,7 @@ class Settings(BaseSettings):
 
     # Retriever Settings
     retriever_search_type: str = Field(default="similarity", validation_alias="RETRIEVER_SEARCH_TYPE")
-    retriever_k: int = Field(default=3, validation_alias="RETRIEVER_K")
+    retriever_k: int = Field(default=5, validation_alias="RETRIEVER_K")
     retriever_lambda_mult: float = Field(default=0.25, validation_alias="RETRIEVER_LAMBDA_MULT")
     
     model_config = SettingsConfigDict(
