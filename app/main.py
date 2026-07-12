@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,11 +8,19 @@ from app.api.endpoints import router as api_router
 from app.config import settings
 from app.utils.logger import logger
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for application startup and shutdown."""
+    logger.info("FastAPI Server starting up...")
+    logger.info(f"Active Configuration: LLM_PROVIDER={settings.llm_provider}, HF_MODEL={settings.hf_model_id}")
+    yield
+
 # Initialize FastAPI application
 app = FastAPI(
     title="Production RAG Chatbot Portfolio",
     description="FastAPI & LangChain RAG pipeline migrated from IBM Watsonx to Hugging Face & Google Gemini",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS with explicit allowed origins
@@ -53,8 +62,4 @@ def serve_index():
         }
     }
 
-# FastAPI Startup event handler
-@app.on_event("startup")
-def on_startup():
-    logger.info("FastAPI Server starting up...")
-    logger.info(f"Active Configuration: LLM_PROVIDER={settings.llm_provider}, HF_MODEL={settings.hf_model_id}")
+

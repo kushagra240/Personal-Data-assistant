@@ -8,7 +8,7 @@ from langchain.chains import RetrievalQA
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 class RAGPipeline:
     def __init__(self):
@@ -78,8 +78,35 @@ class RAGPipeline:
                 max_output_tokens=600,
             )
             logger.info(f"ChatGoogleGenerativeAI LLM initialized with model '{settings.gemini_model_id}'.")
+        elif settings.llm_provider == "watsonx":
+            # Guard for missing/placeholder API key
+            if not settings.watsonx_apikey or settings.watsonx_apikey == "your_watsonx_apikey_here":
+                logger.warning("WATSONX_APIKEY is a placeholder or not set. Activating DEMO MODE with Fake LLM.")
+                from langchain_core.language_models.fake import FakeListLLM
+                self.llm_hub = FakeListLLM(responses=[
+                    "[DEMO MODE] Watsonx API key is not set. The RAG pipeline processed the PDF successfully and searched the Chroma vector index. To get real AI responses, configure a valid API key in the .env file."
+                ] * 100)
+                return
+                
+            from langchain_ibm import WatsonxLLM
+            
+            # WatsonxLLM checks WATSONX_APIKEY env var internally
+            os.environ["WATSONX_APIKEY"] = settings.watsonx_apikey
+            
+            logger.info("Initializing WatsonxLLM...")
+            model_parameters = {
+                "max_new_tokens": settings.watsonx_max_new_tokens,
+                "temperature": settings.watsonx_temperature,
+            }
+            self.llm_hub = WatsonxLLM(
+                model_id=settings.watsonx_model_id,
+                url=settings.watsonx_url,
+                project_id=settings.watsonx_project_id,
+                params=model_parameters
+            )
+            logger.info(f"WatsonxLLM initialized with model '{settings.watsonx_model_id}'.")
         else:
-            raise ValueError(f"Invalid LLM_PROVIDER '{settings.llm_provider}'. Supported: 'huggingface', 'gemini'.")
+            raise ValueError(f"Invalid LLM_PROVIDER '{settings.llm_provider}'. Supported: 'huggingface', 'gemini', 'watsonx'.")
 
     def process_document(self, file_path: str):
         """Processes a PDF document, splits it, embeds chunks, and builds a QA Retrieval Chain."""
@@ -115,10 +142,17 @@ class RAGPipeline:
         logger.info("Chroma DB initialization complete.")
 
         # Build QA Retrieval Chain
+        search_kwargs = {"k": settings.retriever_k}
+        if settings.retriever_search_type == "mmr":
+            search_kwargs["lambda_mult"] = settings.retriever_lambda_mult
+            
         self.qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm_hub,
             chain_type="stuff",
-            retriever=self.vector_store.as_retriever(search_kwargs={"k": 3}),
+            retriever=self.vector_store.as_retriever(
+                search_type=settings.retriever_search_type,
+                search_kwargs=search_kwargs
+            ),
             return_source_documents=False,
             input_key="question"
         )

@@ -40,7 +40,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
             
             // Set LLM Provider Badge
-            llmEngineBadge.innerText = data.llm_provider === "gemini" ? "Gemini Engine" : "Hugging Face";
+            if (data.llm_provider === "gemini") {
+                llmEngineBadge.innerText = "Gemini Engine";
+            } else if (data.llm_provider === "watsonx") {
+                llmEngineBadge.innerText = "Watsonx Engine";
+            } else {
+                llmEngineBadge.innerText = "Hugging Face";
+            }
             
             if (data.has_document_loaded) {
                 setDocumentReadyState(data.loaded_document);
