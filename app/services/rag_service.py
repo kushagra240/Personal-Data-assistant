@@ -115,6 +115,23 @@ class RAGPipeline:
             
         logger.info(f"Starting document processing for: {file_path}")
         
+        # Clear any existing Chroma DB collections/directories to prevent context-leakage
+        if self.vector_store:
+            try:
+                self.vector_store.delete_collection()
+                logger.info("Deleted existing Chroma collection to clear context.")
+            except Exception as e:
+                logger.warning(f"Could not delete collection before document ingestion: {e}")
+            self.vector_store = None
+            
+        if os.path.exists(settings.chroma_db_dir):
+            import shutil
+            try:
+                shutil.rmtree(settings.chroma_db_dir)
+                logger.info(f"Cleared persistent Chroma DB directory: {settings.chroma_db_dir}")
+            except Exception as e:
+                logger.warning(f"Could not remove persistent Chroma DB directory: {e}. Re-initializing over it.")
+
         # Load PDF pages
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"PDF file not found at path: {file_path}")
