@@ -179,7 +179,7 @@ class RAGPipeline:
         if settings.retriever_search_type == "mmr":
             search_kwargs["lambda_mult"] = settings.retriever_lambda_mult
 
-        prompt_template = """Use the following pieces of context to answer the question at the end. 
+        prompt_template = """Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 Provide a detailed, comprehensive, and well-structured response. Organize your answer with clear points, bullet points, or sections if appropriate.
 
