@@ -1,6 +1,8 @@
 # Vortex AI - Enterprise PDF Retrieval-Augmented Generation (RAG) Platform
 A production-grade, modular, and containerized AI portfolio project. This application allows users to upload PDF documents, index their textual segments locally inside a vector database, and perform contextual, hallucination-free Q&A chats utilizing LLMs.
 
+![Vortex AI Interface](static/vortex_dashboard.png)
+
 Migrated from **IBM Cloud Watsonx** to fully free-tier open-source infrastructure: **FastAPI + LangChain + Chroma DB + Hugging Face / Google Gemini**.
 
 ---
@@ -57,19 +59,19 @@ project/
 ```
 
 ### RAG Inference Dataflow
-```
-[User Query] ──> [FastAPI /predict] ──> [LangChain RetrievalQA]
-                                                │
-       ┌────────────────────────────────────────┴────────────────────────────────────────┐
-       ▼                                                                                  ▼
-[Vector Retrieval]                                                                [Inference Generation]
-Query Embeddings -> Chroma DB                                                     Context + Query -> Prompt Template
-       │                                                                                  │
-       ▼                                                                                  ▼
-Returns Top K relevant text chunks ───────────────────────────────────────────> Llama 3.1 (HF) / Gemini 3.5 (Google)
-                                                                                          │
-                                                                                          ▼
-                                                                                   [JSON Answer Output]
+```mermaid
+graph TD
+    UserQuery[User Query] --> PredictEndpoint[FastAPI /predict]
+    PredictEndpoint --> RetrievalQA[LangChain RetrievalQA]
+    RetrievalQA --> VectorRetrieval[Vector Retrieval]
+    RetrievalQA --> InferenceGen[Inference Generation]
+    VectorRetrieval --> EmbedQuery[Query Embeddings]
+    EmbedQuery --> ChromaDB[(Chroma DB Vector Store)]
+    ChromaDB --> TopK[Retrieve Top K Text Chunks]
+    TopK --> LLMHub[LLM Inference Hub<br>Gemini 3.5 / Llama 3.1]
+    InferenceGen --> PromptBuilder[Format Prompt Template<br>Context + Query]
+    PromptBuilder --> LLMHub
+    LLMHub --> Answer[JSON Answer Output]
 ```
 
 ---
@@ -262,5 +264,31 @@ When deploying the app to production hosts (e.g. Render, Railway, Hugging Face S
 
 ---
 
+## 🗺️ Future Improvements & Scaling Roadmap
+
+To transition this portfolio project into a production-grade enterprise application, the following architectural enhancements are planned:
+
+1. **Robust Authentication & Session Management**:
+   - Integrate OAuth2 with JWT tokens or Auth0 to support user registration and private, isolated workspaces.
+   - Migrate session chat history from memory to a persistent caching layer (e.g., **Redis**) to prevent session loss on container restarts.
+
+2. **Distributed Storage & Multi-Tenancy**:
+   - Replace the local sqlite-backed **Chroma DB** instance with a distributed vector database like **Pinecone**, **Weaviate**, or **pgvector** inside a hosted PostgreSQL instance.
+   - Enforce document namespace isolation to guarantee that users can retrieve content only from their authorized uploads.
+
+3. **Advanced RAG Retrieval Techniques**:
+   - Implement **Parent Document Retrieval** and **Hierarchical Node Parsing** to fetch smaller, highly relevant vector chunks while passing larger parent contexts to the LLM.
+   - Integrate a **Re-ranking layer** (e.g., Cohere Rerank or Cross-Encoders) to rank search nodes before sending them to the generative model.
+
+4. **Analytics & Fine-grained Observability**:
+   - Configure **LangSmith** or **Arize Phoenix** tracing to evaluate retrieval metrics (Faithfulness, Answer Relevance, Context Recall).
+   - Integrate **Sentry** for server-side trace exception reporting and custom dashboard performance alerts.
+
+5. **Horizontal Auto-scaling**:
+   - Dockerize separate services for the FastAPI API gateway and Celery background workers for indexing, allowing independent horizontal scaling based on queue depth.
+
+---
+
 ## 📄 License
 This project is open-source and licensed under the [MIT License](LICENSE).
+
