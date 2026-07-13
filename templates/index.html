@@ -30,17 +30,17 @@
 
             <!-- Upload Panel -->
             <div class="sidebar-section">
-                <h3 class="section-title"><i class="fa-solid fa-folder-open"></i> Document Ingestion</h3>
-                <div class="upload-zone" id="uploadZone">
-                    <input type="file" id="fileInput" accept=".pdf" class="hidden-file-input">
-                    <i class="fa-solid fa-circle-notch fa-spin upload-spinner hidden" id="uploadSpinner"></i>
-                    <i class="fa-solid fa-arrow-up-from-bracket upload-icon" id="uploadIcon"></i>
+                <h3 class="section-title"><i class="fa-solid fa-folder-open" aria-hidden="true"></i> Document Ingestion</h3>
+                <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="Upload PDF Document Context">
+                    <input type="file" id="fileInput" accept=".pdf" class="hidden-file-input" aria-label="Choose PDF file">
+                    <i class="fa-solid fa-circle-notch fa-spin upload-spinner hidden" id="uploadSpinner" aria-hidden="true"></i>
+                    <i class="fa-solid fa-arrow-up-from-bracket upload-icon" id="uploadIcon" aria-hidden="true"></i>
                     <p class="upload-text">Upload PDF Context</p>
                     <p class="upload-subtext">Drag & drop or click to search</p>
                 </div>
                 
                 <!-- Upload Progress -->
-                <div class="upload-progress-container hidden" id="uploadProgressContainer">
+                <div class="upload-progress-container hidden" id="uploadProgressContainer" role="progressbar" aria-valuemin="0" aria-valuemax="100">
                     <div class="progress-bar-wrapper">
                         <div class="progress-bar" id="progressBar"></div>
                     </div>
@@ -52,13 +52,13 @@
 
                 <!-- Loaded Document Details (Tonal Nesting) -->
                 <div class="doc-card hidden" id="docCard">
-                    <i class="fa-solid fa-file-pdf doc-card-icon"></i>
+                    <i class="fa-solid fa-file-pdf doc-card-icon" aria-hidden="true"></i>
                     <div class="doc-card-details">
                         <h4 class="doc-name" id="docName">document.pdf</h4>
-                        <p class="doc-status"><i class="fa-solid fa-shield-halved text-success"></i> Anchored & Indexed</p>
+                        <p class="doc-status"><i class="fa-solid fa-shield-halved text-success" aria-hidden="true"></i> Anchored & Indexed</p>
                     </div>
-                    <button class="doc-remove-btn" id="removeDocBtn" title="Clear context">
-                        <i class="fa-solid fa-xmark"></i>
+                    <button class="doc-remove-btn" id="removeDocBtn" title="Clear context" aria-label="Remove loaded document context">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                 </div>
             </div>
@@ -99,8 +99,8 @@
                     <span class="context-value" id="currentContextName">Load a PDF document to instantiate chat</span>
                 </div>
                 <div class="header-actions">
-                    <button class="action-btn" id="clearHistoryBtn" title="Reset chat history">
-                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    <button class="action-btn" id="clearHistoryBtn" title="Reset chat history" aria-label="Reset chat history">
+                        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Reset
                     </button>
                 </div>
             </header>
@@ -139,9 +139,9 @@
             <div class="chat-input-wrapper">
                 <div class="chat-input-form-container">
                     <form class="chat-input-form" id="chatForm">
-                        <input type="text" id="userInput" placeholder="Ask a question about the loaded document..." autocomplete="off" disabled>
-                        <button type="submit" id="sendBtn" class="send-btn" disabled>
-                            <i class="fa-solid fa-paper-plane"></i>
+                        <input type="text" id="userInput" placeholder="Ask a question about the loaded document..." autocomplete="off" aria-label="Chat query input" disabled>
+                        <button type="submit" id="sendBtn" class="send-btn" aria-label="Send message" disabled>
+                            <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
                         </button>
                     </form>
                 </div>

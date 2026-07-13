@@ -232,6 +232,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     uploadZone.addEventListener("click", () => fileInput.click());
+    uploadZone.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            fileInput.click();
+        }
+    });
     fileInput.addEventListener("change", (e) => {
         const file = e.target.files[0];
         handleFileUpload(file);
