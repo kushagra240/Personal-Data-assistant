@@ -102,10 +102,10 @@ def test_error_masking_upload(client, mock_rag_pipeline):
 
 def test_error_masking_reset(client, mock_rag_pipeline):
     """Tests that internal exceptions during reset session are masked as general 500 errors."""
-    # Mock reset to raise raw internal exception
-    mock_rag_pipeline.reset.side_effect = OSError("Access denied: cannot remove directory database files")
+    mock_reset = MagicMock(side_effect=OSError("Access denied: cannot remove directory database files"))
     
-    response = client.post("/reset")
+    with patch.object(mock_rag_pipeline, "reset", mock_reset):
+        response = client.post("/reset")
     
     assert response.status_code == 500
     assert "Failed to reset session context." in response.json()["detail"]
