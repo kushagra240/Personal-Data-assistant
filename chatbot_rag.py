@@ -282,6 +282,7 @@ def process_document_route():
 if __name__ == "__main__":
     app.run(debug=True, port=8000, host='0.0.0.0')
 
+"""
 # Use Python 3.10 base image
 FROM python:3.10
 
@@ -314,3 +315,4 @@ CMD ["python", "-u", "server.py"]
 
 docker build --no-cache -t build_chatbot_for_your_data .
 docker run -p 8000:8000 build_chatbot_for_your_data
+"""
