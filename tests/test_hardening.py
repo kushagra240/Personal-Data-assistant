@@ -52,10 +52,20 @@ def test_upload_invalid_mime_type(client):
 
 def test_upload_file_size_exceeded(client):
     """Tests that files exceeding the 15MB file size limit are rejected with 413 Payload Too Large."""
-    # 16 MB of dummy data
-    large_data = b"a" * (16 * 1024 * 1024)
-    files = {"file": ("large.pdf", io.BytesIO(large_data), "application/pdf")}
-    response = client.post("/upload", files=files)
+    files = {"file": ("large.pdf", io.BytesIO(b"%PDF-1.4 dummy context"), "application/pdf")}
+    
+    # Patch SpooledTemporaryFile.read to return a 16MB chunk on the first read call
+    from tempfile import SpooledTemporaryFile
+    
+    first_read = [True]
+    def mock_read(self, *args, **kwargs):
+        if first_read[0]:
+            first_read[0] = False
+            return b"a" * (16 * 1024 * 1024)
+        return b""
+        
+    with patch.object(SpooledTemporaryFile, "read", mock_read):
+        response = client.post("/upload", files=files)
     
     assert response.status_code == 413
     assert "File size exceeds the maximum limit of 15MB." in response.json()["detail"]
