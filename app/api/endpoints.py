@@ -1,19 +1,15 @@
 import os
-import shutil
-from fastapi import APIRouter, File, UploadFile, HTTPException, status, Depends
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+
+from app.api.schemas import ChatExchange, HealthResponse, HistoryResponse, QuestionRequest, QuestionResponse
 from app.config import settings
-from app.utils.logger import logger
 from app.services.rag_service import rag_pipeline
-from app.utils.rate_limiter import upload_rate_limiter, message_rate_limiter
-from app.api.schemas import (
-    QuestionRequest,
-    QuestionResponse,
-    HealthResponse,
-    HistoryResponse,
-    ChatExchange
-)
+from app.utils.logger import logger
+from app.utils.rate_limiter import message_rate_limiter, upload_rate_limiter
 
 router = APIRouter()
+
 
 @router.get("/health", response_model=HealthResponse)
 def health_check():
@@ -22,17 +18,16 @@ def health_check():
         status="healthy",
         llm_provider=settings.llm_provider,
         has_document_loaded=rag_pipeline.qa_chain is not None,
-        loaded_document=rag_pipeline.current_pdf
+        loaded_document=rag_pipeline.current_pdf,
     )
+
 
 @router.get("/history", response_model=HistoryResponse)
 def get_chat_history():
     """Retrieves session chat history."""
-    history_list = [
-        ChatExchange(question=q, answer=a)
-        for q, a in rag_pipeline.chat_history
-    ]
+    history_list = [ChatExchange(question=q, answer=a) for q, a in rag_pipeline.chat_history]
     return HistoryResponse(history=history_list)
+
 
 @router.post("/upload", response_model=QuestionResponse)
 @router.post("/process-document", response_model=QuestionResponse)
@@ -44,18 +39,12 @@ def upload_document(file: UploadFile = File(...), _=Depends(upload_rate_limiter.
     # 1. Validate File Extension
     if not file.filename.lower().endswith(".pdf"):
         logger.warning(f"File rejection: Invalid extension in upload '{file.filename}'")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF documents (.pdf) are supported."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF documents (.pdf) are supported.")
 
     # 2. Validate MIME/Content-Type
     if file.content_type != "application/pdf":
         logger.warning(f"File rejection: Invalid MIME type '{file.content_type}' for file '{file.filename}'")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF documents are supported."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF documents are supported.")
 
     # 3. Path Traversal Validation & Sanitization
     safe_filename = os.path.basename(file.filename)
@@ -63,11 +52,11 @@ def upload_document(file: UploadFile = File(...), _=Depends(upload_rate_limiter.
     temp_file_path = os.path.join(settings.upload_dir, safe_filename)
 
     logger.info(f"Receiving file upload: {safe_filename}")
-    
+
     # 4. Enforce Max File Size (15MB) during stream write
     max_file_size = 15 * 1024 * 1024  # 15MB
     total_bytes = 0
-    
+
     try:
         with open(temp_file_path, "wb") as buffer:
             while True:
@@ -82,7 +71,7 @@ def upload_document(file: UploadFile = File(...), _=Depends(upload_rate_limiter.
                         os.remove(temp_file_path)
                     raise HTTPException(
                         status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                        detail="File size exceeds the maximum limit of 15MB."
+                        detail="File size exceeds the maximum limit of 15MB.",
                     )
                 buffer.write(chunk)
         logger.info(f"File saved to temp path: {temp_file_path}")
@@ -92,10 +81,7 @@ def upload_document(file: UploadFile = File(...), _=Depends(upload_rate_limiter.
         logger.error(f"Error occurred while writing uploaded file: {e}", exc_info=True)
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to write file to disk."
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to write file to disk.")
 
     try:
         # Ingest file into RAG pipeline
@@ -106,13 +92,13 @@ def upload_document(file: UploadFile = File(...), _=Depends(upload_rate_limiter.
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to ingest and parse PDF document."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to ingest and parse PDF document."
         )
 
     return QuestionResponse(
         botResponse="Thank you for providing your PDF document. I have analyzed it, so now you can ask me any questions regarding it!"
     )
+
 
 @router.post("/predict", response_model=QuestionResponse)
 @router.post("/process-message", response_model=QuestionResponse)
@@ -123,24 +109,20 @@ def process_question(payload: QuestionRequest, _=Depends(message_rate_limiter.ch
     """
     user_message = payload.userMessage
     if not user_message or not user_message.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Prompt text 'userMessage' is required."
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt text 'userMessage' is required.")
 
     # 1. Enforce query length cap (4096 characters)
     if len(user_message) > 4096:
         logger.warning("Query rejection: Prompt length exceeds 4096 limit.")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Prompt length cannot exceed 4096 characters."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Prompt length cannot exceed 4096 characters."
         )
 
     if not rag_pipeline.qa_chain:
         logger.warning("Query execution attempted without indexed document context.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No document has been processed. Please upload a PDF document first."
+            detail="No document has been processed. Please upload a PDF document first.",
         )
 
     try:
@@ -148,10 +130,8 @@ def process_question(payload: QuestionRequest, _=Depends(message_rate_limiter.ch
         return QuestionResponse(botResponse=bot_response)
     except Exception as e:
         logger.error(f"Inference processing failed: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Inference execution error."
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Inference execution error.")
+
 
 @router.post("/reset")
 def reset_session():
@@ -162,6 +142,5 @@ def reset_session():
     except Exception as e:
         logger.error(f"Failed to reset RAG pipeline session context: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset session context."
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reset session context."
         )

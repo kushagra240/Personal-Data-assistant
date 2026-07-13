@@ -2,10 +2,11 @@ import logging
 import os
 import sys
 
+
 def setup_logger(name: str = "app") -> logging.Logger:
     """Sets up a logger with handlers for console and file logging."""
     logger = logging.getLogger(name)
-    
+
     # Avoid duplicate handlers if logger is already configured
     if logger.handlers:
         return logger
@@ -14,8 +15,7 @@ def setup_logger(name: str = "app") -> logging.Logger:
 
     # Define formatter
     formatter = logging.Formatter(
-        "[%(asctime)s] %(levelname)s [%(name)s:%(filename)s:%(lineno)d] - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        "[%(asctime)s] %(levelname)s [%(name)s:%(filename)s:%(lineno)d] - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
 
     # Console Handler
@@ -33,6 +33,7 @@ def setup_logger(name: str = "app") -> logging.Logger:
     logger.addHandler(file_handler)
 
     return logger
+
 
 # Initialize default application logger
 logger = setup_logger()

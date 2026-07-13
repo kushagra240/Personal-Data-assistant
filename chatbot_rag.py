@@ -7,19 +7,19 @@ Original file is located at
     https://colab.research.google.com/drive/1aNH5SHUTvi_kkOdT48p7sYBgc6sowJsl
 """
 
-import os
-import torch
 import logging
+import os
+
+import torch
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-from langchain_core.prompts import PromptTemplate  # Updated import per deprecation notice
 from langchain.chains import RetrievalQA
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_ibm import WatsonxLLM
 
@@ -31,6 +31,7 @@ conversation_retrieval_chain = None
 chat_history = []
 llm_hub = None
 embeddings = None
+
 
 # Function to initialize the language model and its embeddings
 def init_llm():
@@ -50,20 +51,15 @@ def init_llm():
     }
 
     # Initialize Watsonx LLM
-    llm_hub = WatsonxLLM(
-        model_id=MODEL_ID,
-        url=WATSONX_URL,
-        project_id=PROJECT_ID,
-        params=model_parameters
-    )
+    llm_hub = WatsonxLLM(model_id=MODEL_ID, url=WATSONX_URL, project_id=PROJECT_ID, params=model_parameters)
     logger.debug("WatsonxLLM initialized: %s", llm_hub)
 
     # Initialize embeddings
     embeddings = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={"device": DEVICE}
+        model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={"device": DEVICE}
     )
     logger.debug("Embeddings initialized with device: %s", DEVICE)
+
 
 # Function to process a PDF document
 def process_document(document_path):
@@ -96,11 +92,12 @@ def process_document(document_path):
     conversation_retrieval_chain = RetrievalQA.from_chain_type(
         llm=llm_hub,
         chain_type="stuff",
-        retriever=db.as_retriever(search_type="mmr", search_kwargs={'k': 6, 'lambda_mult': 0.25}),
+        retriever=db.as_retriever(search_type="mmr", search_kwargs={"k": 6, "lambda_mult": 0.25}),
         return_source_documents=False,
-        input_key="question"
+        input_key="question",
     )
     logger.info("RetrievalQA chain created successfully.")
+
 
 # Function to process a user prompt
 def process_prompt(prompt):
@@ -119,41 +116,37 @@ def process_prompt(prompt):
 
     return answer
 
+
 # Initialize the language model
 init_llm()
 logger.info("LLM and embeddings initialization complete.")
 
+
 def init_llm():
-  global llm_hub, embeddings
+    global llm_hub, embeddings
 
-  os.environ["HUGGINGFACEHUB_API_TOKEN"]="YOUR API KEY"
-  base_llm=HuggingfaceEndpoint(
-      repo_id="",
-      task="text_generation",
-      huggingfacehub_api_token=os.environ["HUGGINGFACEHUB_API_TOKEN"],
-      temperature=0.1,
-      max_new_tokens=600,
-  )
+    os.environ["HUGGINGFACEHUB_API_TOKEN"] = "YOUR API KEY"
+    base_llm = HuggingfaceEndpoint(
+        repo_id="",
+        task="text_generation",
+        huggingfacehub_api_token=os.environ["HUGGINGFACEHUB_API_TOKEN"],
+        temperature=0.1,
+        max_new_tokens=600,
+    )
 
-  llm_hub=ChatHuggingFace(llm=base_llm)
-  embeddings=HuggingFaceEmbeddings(
-      model_name="",
-      model_kwargs={"device": DEVICE},
-  )
+    llm_hub = ChatHuggingFace(llm=base_llm)
+    embeddings = HuggingFaceEmbeddings(
+        model_name="",
+        model_kwargs={"device": DEVICE},
+    )
 
-#HuggingFace Version
-import os
+
+# HuggingFace Version
 import torch
-
-from langchain.chains import RetrievalQA
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.vectorstores import Chroma
-
 from langchain_huggingface import (
-    HuggingFaceEndpoint,
-    HuggingFaceEmbeddings,
     ChatHuggingFace,
+    HuggingFaceEmbeddings,
+    HuggingFaceEndpoint,
 )
 
 # Check for GPU availability
@@ -164,6 +157,7 @@ conversation_retrieval_chain = None
 chat_history = []
 llm_hub = None
 embeddings = None
+
 
 # Initialize the language model and embeddings
 def init_llm():
@@ -187,6 +181,7 @@ def init_llm():
         model_kwargs={"device": DEVICE},
     )
 
+
 # Process a PDF document
 def process_document(document_path):
     global conversation_retrieval_chain
@@ -194,10 +189,7 @@ def process_document(document_path):
     loader = PyPDFLoader(document_path)
     documents = loader.load()
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1024,
-        chunk_overlap=64
-    )
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=64)
     texts = text_splitter.split_documents(documents)
 
     db = Chroma.from_documents(texts, embedding=embeddings)
@@ -210,62 +202,65 @@ def process_document(document_path):
         input_key="question",
     )
 
+
 # Process a user prompt
 def process_prompt(prompt):
     global conversation_retrieval_chain, chat_history
 
-    output = conversation_retrieval_chain.invoke(
-        {"question": prompt, "chat_history": chat_history}
-    )
+    output = conversation_retrieval_chain.invoke({"question": prompt, "chat_history": chat_history})
     answer = output["result"]
 
     chat_history.append((prompt, answer))
     return answer.strip()
 
+
 # Initialize LLM and embeddings
 init_llm()
 
-#server.py
+# server.py
 import logging
-import os
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
+
 import worker  # Import the worker module
+from flask import Flask, jsonify, render_template, request
+from flask_cors import CORS
 
 # Initialize Flask app and CORS
 app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}})
 app.logger.setLevel(logging.ERROR)
 
+
 # Define the route for the index page
-@app.route('/', methods=['GET'])
+@app.route("/", methods=["GET"])
 def index():
-    return render_template('index.html')  # Render the index.html template
+    return render_template("index.html")  # Render the index.html template
+
 
 # Define the route for processing messages
-@app.route('/process-message', methods=['POST'])
+@app.route("/process-message", methods=["POST"])
 def process_message_route():
-    user_message = request.json['userMessage']  # Extract the user's message from the request
-    print('user_message', user_message)
+    user_message = request.json["userMessage"]  # Extract the user's message from the request
+    print("user_message", user_message)
 
     bot_response = worker.process_prompt(user_message)  # Process the user's message using the worker module
 
     # Return the bot's response as JSON
-    return jsonify({
-        "botResponse": bot_response
-    }), 200
+    return jsonify({"botResponse": bot_response}), 200
+
 
 # Define the route for processing documents
-@app.route('/process-document', methods=['POST'])
+@app.route("/process-document", methods=["POST"])
 def process_document_route():
     # Check if a file was uploaded
-    if 'file' not in request.files:
-        return jsonify({
-            "botResponse": "It seems like the file was not uploaded correctly, can you try "
-                           "again. If the problem persists, try using a different file"
-        }), 400
+    if "file" not in request.files:
+        return jsonify(
+            {
+                "botResponse": "It seems like the file was not uploaded correctly, can you try "
+                "again. If the problem persists, try using a different file"
+            }
+        ), 400
 
-    file = request.files['file']  # Extract the uploaded file from the request
+    file = request.files["file"]  # Extract the uploaded file from the request
 
     file_path = file.filename  # Define the path where the file will be saved
     file.save(file_path)  # Save the file
@@ -273,14 +268,17 @@ def process_document_route():
     worker.process_document(file_path)  # Process the document using the worker module
 
     # Return a success message as JSON
-    return jsonify({
-        "botResponse": "Thank you for providing your PDF document. I have analyzed it, so now you can ask me any "
-                       "questions regarding it!"
-    }), 200
+    return jsonify(
+        {
+            "botResponse": "Thank you for providing your PDF document. I have analyzed it, so now you can ask me any "
+            "questions regarding it!"
+        }
+    ), 200
+
 
 # Run the Flask app
 if __name__ == "__main__":
-    app.run(debug=True, port=8000, host='0.0.0.0')
+    app.run(debug=True, port=8000, host="0.0.0.0")
 
 """
 # Use Python 3.10 base image
