@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, validation_alias="PORT")
     debug: bool = Field(default=True, validation_alias="DEBUG")
 
-    # LLM Settings: 'huggingface', 'gemini', or 'watsonx'
+    # LLM Settings: 'huggingface' or 'gemini'
     llm_provider: str = Field(default="huggingface", validation_alias="LLM_PROVIDER")
     llm_max_new_tokens: int = Field(default=1024, validation_alias="LLM_MAX_NEW_TOKENS")
     llm_temperature: float = Field(default=0.1, validation_alias="LLM_TEMPERATURE")
@@ -19,16 +19,6 @@ class Settings(BaseSettings):
     # Gemini Settings
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model_id: str = Field(default="gemini-3.5-flash", validation_alias="GEMINI_MODEL_ID")
-
-    # Watsonx Settings
-    watsonx_apikey: str = Field(default="", validation_alias="WATSONX_APIKEY")
-    watsonx_project_id: str = Field(default="skills-network", validation_alias="WATSONX_PROJECT_ID")
-    watsonx_url: str = Field(default="https://us-south.ml.cloud.ibm.com", validation_alias="WATSONX_URL")
-    watsonx_model_id: str = Field(
-        default="meta-llama/llama-4-maverick-17b-128e-instruct-fp8", validation_alias="WATSONX_MODEL_ID"
-    )
-    watsonx_max_new_tokens: int = Field(default=256, validation_alias="WATSONX_MAX_NEW_TOKENS")
-    watsonx_temperature: float = Field(default=0.1, validation_alias="WATSONX_TEMPERATURE")
 
     # CORS Settings
     cors_allowed_origins: str = Field(
