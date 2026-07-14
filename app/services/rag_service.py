@@ -92,40 +92,9 @@ class RAGPipeline:
                 max_output_tokens=settings.llm_max_new_tokens,
             )
             logger.info(f"ChatGoogleGenerativeAI LLM initialized with model '{settings.gemini_model_id}'.")
-        elif settings.llm_provider == "watsonx":
-            # Guard for missing/placeholder API key
-            if not settings.watsonx_apikey or settings.watsonx_apikey == "your_watsonx_apikey_here":
-                logger.warning("WATSONX_APIKEY is a placeholder or not set. Activating DEMO MODE with Fake LLM.")
-                from langchain_core.language_models.fake import FakeListLLM
-
-                self.llm_hub = FakeListLLM(
-                    responses=[
-                        "[DEMO MODE] Watsonx API key is not set. The RAG pipeline processed the PDF successfully and searched the Chroma vector index. To get real AI responses, configure a valid API key in the .env file."
-                    ]
-                    * 100
-                )
-                return
-
-            from langchain_ibm import WatsonxLLM
-
-            # WatsonxLLM checks WATSONX_APIKEY env var internally
-            os.environ["WATSONX_APIKEY"] = settings.watsonx_apikey
-
-            logger.info("Initializing WatsonxLLM...")
-            model_parameters = {
-                "max_new_tokens": settings.watsonx_max_new_tokens,
-                "temperature": settings.watsonx_temperature,
-            }
-            self.llm_hub = WatsonxLLM(
-                model_id=settings.watsonx_model_id,
-                url=settings.watsonx_url,
-                project_id=settings.watsonx_project_id,
-                params=model_parameters,
-            )
-            logger.info(f"WatsonxLLM initialized with model '{settings.watsonx_model_id}'.")
         else:
             raise ValueError(
-                f"Invalid LLM_PROVIDER '{settings.llm_provider}'. Supported: 'huggingface', 'gemini', 'watsonx'."
+                f"Invalid LLM_PROVIDER '{settings.llm_provider}'. Supported: 'huggingface', 'gemini'."
             )
 
     def process_document(self, file_path: str):
