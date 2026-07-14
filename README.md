@@ -24,8 +24,42 @@ Migrated from **IBM Cloud Watsonx** to fully free-tier open-source infrastructur
 
 ---
 
-## 🏗️ Architecture & Component Layout
+## 🏗️ System Architecture & Component Layout
 
+```mermaid
+graph LR
+    subgraph Client [Browser Client]
+        UI[Vortex SPA UI]
+        JS[app.js Controller]
+    end
+
+    subgraph Backend [FastAPI Web Service]
+        API[endpoints.py Router]
+        RAG[rag_service.py Pipeline]
+        Embed[MiniLM Embeddings Model]
+    end
+
+    subgraph Storage [Persistent Storage]
+        DB[(Chroma DB Vector Store)]
+        PDFs[(PDF Storage)]
+    end
+
+    subgraph LLM_APIs [LLM Inference APIs]
+        Gemini[Google Gemini 3.5 Flash]
+        HuggingFace[Hugging Face Llama 3.1]
+    end
+
+    UI -->|JSON requests| API
+    JS -->|multipart/form-data| API
+    API -->|Process queries/PDFs| RAG
+    RAG -->|Compute text embeddings| Embed
+    RAG -->|Query vectors / Store index| DB
+    RAG -->|Inference prompt payloads| Gemini
+    RAG -->|Inference prompt payloads| HuggingFace
+    DB -->|Read/write index| PDFs
+```
+
+### Component Layout
 ```
 project/
 ├── app/
@@ -35,7 +69,8 @@ project/
 │   ├── services/
 │   │   └── rag_service.py   # RAG pipeline: document loader, splitter, Chroma DB, and LLM
 │   ├── utils/
-│   │   └── logger.py        # Centralized custom logger configuration
+│   │   ├── logger.py        # Centralized custom logger configuration
+│   │   └── rate_limiter.py   # Sliding-window IP-based rate limiter
 │   ├── main.py              # Application entrypoint & StaticFiles mounts
 │   └── config.py            # Pydantic Settings env configuration validator
 ├── static/
@@ -49,6 +84,7 @@ project/
 ├── tests/
 │   ├── conftest.py          # Pytest fixtures and mock setups
 │   ├── test_api.py          # Endpoint API integration tests
+│   ├── test_hardening.py     # Security and hardening tests
 │   └── test_rag.py          # RAG pipeline unit tests
 ├── requirements.txt         # Pinned python packages
 ├── Dockerfile               # Slim multi-stage docker image
