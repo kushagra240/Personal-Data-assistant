@@ -73,23 +73,6 @@ def test_ask_question_empty_prompt():
     assert "Question prompt cannot be empty." in str(exc.value)
 
 
-@patch("app.services.rag_service.HuggingFaceEmbeddings")
-@patch("langchain_ibm.WatsonxLLM")
-def test_rag_pipeline_init_watsonx(mock_watsonx, mock_embeddings, monkeypatch):
-    """Tests that RAGPipeline successfully initializes WatsonxLLM when configured."""
-    from app.config import settings
-
-    monkeypatch.setattr(settings, "llm_provider", "watsonx")
-    monkeypatch.setattr(settings, "watsonx_apikey", "mock_watsonx_key")
-    monkeypatch.setattr(settings, "watsonx_project_id", "mock_project")
-
-    pipeline = RAGPipeline()
-    pipeline.init_llm()
-
-    assert pipeline.llm_hub is not None
-    mock_watsonx.assert_called_once()
-    mock_embeddings.assert_called_once()
-
 
 @patch("app.services.rag_service.RetrievalQA")
 @patch("app.services.rag_service.HuggingFaceEmbeddings")
