@@ -42,8 +42,6 @@ document.addEventListener("DOMContentLoaded", () => {
             // Set LLM Provider Badge
             if (data.llm_provider === "gemini") {
                 llmEngineBadge.innerText = "Gemini Engine";
-            } else if (data.llm_provider === "watsonx") {
-                llmEngineBadge.innerText = "Watsonx Engine";
             } else {
                 llmEngineBadge.innerText = "Hugging Face";
             }
