@@ -111,3 +111,64 @@ def test_rag_pipeline_process_document_mmr(
 
     # Assert MMR arguments were passed to as_retriever
     mock_db.as_retriever.assert_called_once_with(search_type="mmr", search_kwargs={"k": 6, "lambda_mult": 0.25})
+
+
+@patch("app.services.rag_service.RetrievalQA")
+@patch("app.services.rag_service.HuggingFaceEmbeddings")
+@patch("app.services.rag_service.Chroma")
+@patch("app.services.rag_service.ParentDocumentRetriever")
+@patch("app.services.rag_service.InMemoryStore")
+@patch("app.services.rag_service.PyPDFLoader")
+def test_rag_pipeline_process_document_parent_retriever(
+    mock_loader,
+    mock_in_memory_store,
+    mock_parent_retriever,
+    mock_chroma,
+    mock_embeddings,
+    mock_retrieval_qa,
+    tmp_path,
+    monkeypatch,
+):
+    """Tests the document ingestion workflow with ParentDocumentRetriever enabled."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "llm_provider", "gemini")
+    monkeypatch.setattr(settings, "gemini_api_key", "mock_key")
+    monkeypatch.setattr(settings, "use_parent_retriever", True)
+    monkeypatch.setattr(settings, "child_chunk_size", 128)
+    monkeypatch.setattr(settings, "child_chunk_overlap", 16)
+    monkeypatch.setattr(settings, "parent_chunk_size", 512)
+    monkeypatch.setattr(settings, "parent_chunk_overlap", 32)
+    monkeypatch.setattr(settings, "retriever_search_type", "similarity")
+    monkeypatch.setattr(settings, "retriever_k", 4)
+
+    pipeline = RAGPipeline()
+    pipeline.llm_hub = MagicMock()
+
+    # Configure mock document loader
+    mock_doc = MagicMock()
+    mock_doc.page_content = "This is a mock PDF document page text."
+    mock_doc.metadata = {}
+    mock_loader.return_value.load.return_value = [mock_doc]
+
+    # Create a temporary empty pdf file
+    temp_pdf = tmp_path / "mock_path.pdf"
+    temp_pdf.write_bytes(b"%PDF-1.4 dummy pdf content")
+
+    # Run pipeline process
+    pipeline.process_document(str(temp_pdf))
+
+    # Assert correct configurations were passed to ParentDocumentRetriever
+    mock_parent_retriever.assert_called_once()
+    _, kwargs = mock_parent_retriever.call_args
+    assert kwargs["search_type"] == "similarity"
+    assert kwargs["search_kwargs"] == {"k": 4}
+
+    # Assert retriever was fed with the loaded documents
+    mock_parent_retriever.return_value.add_documents.assert_called_once_with([mock_doc])
+
+    assert pipeline.current_pdf == "mock_path.pdf"
+    assert pipeline.qa_chain is not None
+    assert pipeline.chat_history == []
+    assert pipeline.docstore is not None
+    assert pipeline.retriever is not None
