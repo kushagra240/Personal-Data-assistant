@@ -22,6 +22,8 @@ class RAGPipeline:
         self.qa_chain = None
         self.chat_history = []
         self.current_pdf = None
+        self.docstore = None
+        self.retriever = None
 
     def init_llm(self):
         """Initializes the embeddings model and choice of LLM provider."""
@@ -130,24 +132,66 @@ class RAGPipeline:
         documents = loader.load()
         logger.info(f"Successfully loaded PDF. Page count: {len(documents)}")
 
-        # Split document text into chunks
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=64)
-        texts = text_splitter.split_documents(documents)
-        logger.info(f"Document split into {len(texts)} chunks.")
-
-        # Create Chroma DB vector store and persist
+        # Create Chroma DB vector store and build retriever
         os.makedirs(settings.chroma_db_dir, exist_ok=True)
-        logger.info(f"Loading chunks into Chroma DB at: {settings.chroma_db_dir}")
-        self.vector_store = Chroma.from_documents(
-            texts, embedding=self.embeddings, persist_directory=settings.chroma_db_dir
-        )
-        logger.info("Chroma DB initialization complete.")
 
-        # Build QA Retrieval Chain
         search_kwargs = {"k": settings.retriever_k}
         if settings.retriever_search_type == "mmr":
             search_kwargs["lambda_mult"] = settings.retriever_lambda_mult
 
+        if settings.use_parent_retriever:
+            logger.info("Using ParentDocumentRetriever for advanced context retrieval.")
+            from langchain.retrievers import ParentDocumentRetriever
+            from langchain.storage import InMemoryStore
+
+            self.docstore = InMemoryStore()
+
+            child_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=settings.child_chunk_size,
+                chunk_overlap=settings.child_chunk_overlap
+            )
+            parent_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=settings.parent_chunk_size,
+                chunk_overlap=settings.parent_chunk_overlap
+            )
+
+            self.vector_store = Chroma(
+                collection_name="vortex_parent_rag",
+                embedding_function=self.embeddings,
+                persist_directory=settings.chroma_db_dir
+            )
+
+            self.retriever = ParentDocumentRetriever(
+                vectorstore=self.vector_store,
+                docstore=self.docstore,
+                child_splitter=child_splitter,
+                parent_splitter=parent_splitter,
+                search_type=settings.retriever_search_type,
+                search_kwargs=search_kwargs
+            )
+
+            # ParentDocumentRetriever automatically splits the original documents and populates stores
+            self.retriever.add_documents(documents)
+            logger.info("ParentDocumentRetriever setup and document ingestion complete.")
+        else:
+            logger.info("Using standard document retriever.")
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=settings.parent_chunk_size,
+                chunk_overlap=settings.parent_chunk_overlap
+            )
+            texts = text_splitter.split_documents(documents)
+            logger.info(f"Document split into {len(texts)} chunks.")
+
+            logger.info(f"Loading chunks into Chroma DB at: {settings.chroma_db_dir}")
+            self.vector_store = Chroma.from_documents(
+                texts, embedding=self.embeddings, persist_directory=settings.chroma_db_dir
+            )
+            self.retriever = self.vector_store.as_retriever(
+                search_type=settings.retriever_search_type, search_kwargs=search_kwargs
+            )
+            logger.info("Standard retriever setup complete.")
+
+        # Build QA Retrieval Chain
         prompt_template = """Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 Provide a detailed, comprehensive, and well-structured response. Organize your answer with clear points, bullet points, or sections if appropriate.
@@ -163,9 +207,7 @@ Helpful Answer:"""
         self.qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm_hub,
             chain_type="stuff",
-            retriever=self.vector_store.as_retriever(
-                search_type=settings.retriever_search_type, search_kwargs=search_kwargs
-            ),
+            retriever=self.retriever,
             return_source_documents=False,
             input_key="question",
             chain_type_kwargs={"prompt": PROMPT},
@@ -197,6 +239,8 @@ Helpful Answer:"""
         self.qa_chain = None
         self.current_pdf = None
         self.chat_history = []
+        self.docstore = None
+        self.retriever = None
         logger.info("RAG pipeline state cleared successfully.")
 
 

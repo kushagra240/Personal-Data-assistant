@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     retriever_k: int = Field(default=5, validation_alias="RETRIEVER_K")
     retriever_lambda_mult: float = Field(default=0.25, validation_alias="RETRIEVER_LAMBDA_MULT")
 
+    # Advanced Parent Document Retriever Settings
+    use_parent_retriever: bool = Field(default=True, validation_alias="USE_PARENT_RETRIEVER")
+    child_chunk_size: int = Field(default=256, validation_alias="CHILD_CHUNK_SIZE")
+    child_chunk_overlap: int = Field(default=32, validation_alias="CHILD_CHUNK_OVERLAP")
+    parent_chunk_size: int = Field(default=1024, validation_alias="PARENT_CHUNK_SIZE")
+    parent_chunk_overlap: int = Field(default=64, validation_alias="PARENT_CHUNK_OVERLAP")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

@@ -16,6 +16,7 @@ def mock_settings_dirs(tmp_path):
     """Overrides Chroma and upload directories to point to a temporary test folder."""
     settings.chroma_db_dir = str(tmp_path / "chroma_db")
     settings.upload_dir = str(tmp_path / "uploads")
+    settings.use_parent_retriever = False
     yield
 
 
