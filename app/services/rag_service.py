@@ -4,6 +4,8 @@ import torch
 
 # Imports for LangChain RAG pipeline
 from langchain.chains import RetrievalQA
+from langchain.retrievers import ParentDocumentRetriever
+from langchain.storage import InMemoryStore
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import PromptTemplate
@@ -141,8 +143,6 @@ class RAGPipeline:
 
         if settings.use_parent_retriever:
             logger.info("Using ParentDocumentRetriever for advanced context retrieval.")
-            from langchain.retrievers import ParentDocumentRetriever
-            from langchain.storage import InMemoryStore
 
             self.docstore = InMemoryStore()
 
