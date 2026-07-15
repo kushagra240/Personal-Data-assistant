@@ -16,6 +16,7 @@ class HealthResponse(BaseModel):
     llm_provider: str = Field(..., description="Currently active language model provider.")
     has_document_loaded: bool = Field(..., description="Indicates if a vector index is currently active.")
     loaded_document: Optional[str] = Field(None, description="Filename of the currently indexed PDF document.")
+    use_parent_retriever: bool = Field(True, description="Indicates if Parent Document Retrieval is enabled.")
 
 
 class ChatExchange(BaseModel):
