@@ -19,6 +19,7 @@ def health_check():
         llm_provider=settings.llm_provider,
         has_document_loaded=rag_pipeline.qa_chain is not None,
         loaded_document=rag_pipeline.current_pdf,
+        use_parent_retriever=settings.use_parent_retriever,
     )
 
 
