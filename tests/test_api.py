@@ -26,7 +26,6 @@ def test_health_check_parent_retriever_true(client, monkeypatch):
     assert data["use_parent_retriever"] is True
 
 
-
 def test_history_initial(client):
     """Tests the /history endpoint starts empty."""
     response = client.get("/history")
