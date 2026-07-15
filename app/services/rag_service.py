@@ -97,9 +97,7 @@ class RAGPipeline:
             )
             logger.info(f"ChatGoogleGenerativeAI LLM initialized with model '{settings.gemini_model_id}'.")
         else:
-            raise ValueError(
-                f"Invalid LLM_PROVIDER '{settings.llm_provider}'. Supported: 'huggingface', 'gemini'."
-            )
+            raise ValueError(f"Invalid LLM_PROVIDER '{settings.llm_provider}'. Supported: 'huggingface', 'gemini'.")
 
     def process_document(self, file_path: str):
         """Processes a PDF document, splits it, embeds chunks, and builds a QA Retrieval Chain."""
@@ -147,18 +145,16 @@ class RAGPipeline:
             self.docstore = InMemoryStore()
 
             child_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=settings.child_chunk_size,
-                chunk_overlap=settings.child_chunk_overlap
+                chunk_size=settings.child_chunk_size, chunk_overlap=settings.child_chunk_overlap
             )
             parent_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=settings.parent_chunk_size,
-                chunk_overlap=settings.parent_chunk_overlap
+                chunk_size=settings.parent_chunk_size, chunk_overlap=settings.parent_chunk_overlap
             )
 
             self.vector_store = Chroma(
                 collection_name="vortex_parent_rag",
                 embedding_function=self.embeddings,
-                persist_directory=settings.chroma_db_dir
+                persist_directory=settings.chroma_db_dir,
             )
 
             self.retriever = ParentDocumentRetriever(
@@ -167,7 +163,7 @@ class RAGPipeline:
                 child_splitter=child_splitter,
                 parent_splitter=parent_splitter,
                 search_type=settings.retriever_search_type,
-                search_kwargs=search_kwargs
+                search_kwargs=search_kwargs,
             )
 
             # ParentDocumentRetriever automatically splits the original documents and populates stores
@@ -176,8 +172,7 @@ class RAGPipeline:
         else:
             logger.info("Using standard document retriever.")
             text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=settings.parent_chunk_size,
-                chunk_overlap=settings.parent_chunk_overlap
+                chunk_size=settings.parent_chunk_size, chunk_overlap=settings.parent_chunk_overlap
             )
             texts = text_splitter.split_documents(documents)
             logger.info(f"Document split into {len(texts)} chunks.")

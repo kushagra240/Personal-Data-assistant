@@ -73,7 +73,6 @@ def test_ask_question_empty_prompt():
     assert "Question prompt cannot be empty." in str(exc.value)
 
 
-
 @patch("app.services.rag_service.RetrievalQA")
 @patch("app.services.rag_service.HuggingFaceEmbeddings")
 @patch("app.services.rag_service.Chroma")
