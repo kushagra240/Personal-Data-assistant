@@ -9,6 +9,22 @@ def test_health_check_initial(client):
     assert data["status"] == "healthy"
     assert data["has_document_loaded"] is False
     assert data["loaded_document"] is None
+    assert data["use_parent_retriever"] is False
+
+
+def test_health_check_parent_retriever_true(client, monkeypatch):
+    """Tests the /health endpoint with use_parent_retriever set to True."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "use_parent_retriever", True)
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["has_document_loaded"] is False
+    assert data["loaded_document"] is None
+    assert data["use_parent_retriever"] is True
+
 
 
 def test_history_initial(client):
