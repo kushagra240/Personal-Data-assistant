@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const llmEngineBadge = document.getElementById("llmEngineBadge");
     const indexStatusBadge = document.getElementById("indexStatusBadge");
     const currentContextName = document.getElementById("currentContextName");
+    const retrieverStrategyBadge = document.getElementById("retrieverStrategyBadge");
     
     // Chat Components
     const chatMessages = document.getElementById("chatMessages");
@@ -44,6 +45,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 llmEngineBadge.innerText = "Gemini Engine";
             } else {
                 llmEngineBadge.innerText = "Hugging Face";
+            }
+            
+            // Set Retriever Strategy Badge
+            if (retrieverStrategyBadge) {
+                if (data.use_parent_retriever) {
+                    retrieverStrategyBadge.innerText = "Parent Document";
+                    retrieverStrategyBadge.className = "badge badge-info";
+                } else {
+                    retrieverStrategyBadge.innerText = "Standard";
+                    retrieverStrategyBadge.className = "badge";
+                }
             }
             
             if (data.has_document_loaded) {
