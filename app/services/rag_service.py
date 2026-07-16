@@ -16,16 +16,75 @@ from app.config import settings
 from app.utils.logger import logger
 
 
-class RAGPipeline:
-    def __init__(self):
-        self.llm_hub = None
-        self.embeddings = None
-        self.vector_store = None
+class SessionState:
+    def __init__(self, session_id: str):
+        self.session_id = session_id
         self.qa_chain = None
         self.chat_history = []
         self.current_pdf = None
         self.docstore = None
         self.retriever = None
+        self.vector_store = None
+
+
+class RAGPipeline:
+    def __init__(self):
+        self.llm_hub = None
+        self.embeddings = None
+        self.sessions = {}
+
+    def get_session(self, session_id: str) -> SessionState:
+        if session_id not in self.sessions:
+            self.sessions[session_id] = SessionState(session_id)
+        return self.sessions[session_id]
+
+    @property
+    def qa_chain(self):
+        return self.get_session("default").qa_chain
+
+    @qa_chain.setter
+    def qa_chain(self, value):
+        self.get_session("default").qa_chain = value
+
+    @property
+    def chat_history(self):
+        return self.get_session("default").chat_history
+
+    @chat_history.setter
+    def chat_history(self, value):
+        self.get_session("default").chat_history = value
+
+    @property
+    def current_pdf(self):
+        return self.get_session("default").current_pdf
+
+    @current_pdf.setter
+    def current_pdf(self, value):
+        self.get_session("default").current_pdf = value
+
+    @property
+    def docstore(self):
+        return self.get_session("default").docstore
+
+    @docstore.setter
+    def docstore(self, value):
+        self.get_session("default").docstore = value
+
+    @property
+    def retriever(self):
+        return self.get_session("default").retriever
+
+    @retriever.setter
+    def retriever(self, value):
+        self.get_session("default").retriever = value
+
+    @property
+    def vector_store(self):
+        return self.get_session("default").vector_store
+
+    @vector_store.setter
+    def vector_store(self, value):
+        self.get_session("default").vector_store = value
 
     def init_llm(self):
         """Initializes the embeddings model and choice of LLM provider."""
@@ -99,30 +158,35 @@ class RAGPipeline:
         else:
             raise ValueError(f"Invalid LLM_PROVIDER '{settings.llm_provider}'. Supported: 'huggingface', 'gemini'.")
 
-    def process_document(self, file_path: str):
+    def process_document(self, file_path: str, session_id: str = "default"):
         """Processes a PDF document, splits it, embeds chunks, and builds a QA Retrieval Chain."""
         if not self.embeddings:
             self.init_llm()
 
-        logger.info(f"Starting document processing for: {file_path}")
+        session = self.get_session(session_id)
+        logger.info(f"Starting document processing for session {session_id}, file: {file_path}")
 
-        # Clear any existing Chroma DB collections/directories to prevent context-leakage
-        if self.vector_store:
+        # Clear any existing Chroma DB collections/directories for this session to prevent context-leakage
+        if session.vector_store:
             try:
-                self.vector_store.delete_collection()
-                logger.info("Deleted existing Chroma collection to clear context.")
+                session.vector_store.delete_collection()
+                logger.info(f"Deleted existing Chroma collection for session {session_id} to clear context.")
             except Exception as e:
-                logger.warning(f"Could not delete collection before document ingestion: {e}")
-            self.vector_store = None
-
-        if os.path.exists(settings.chroma_db_dir):
-            import shutil
-
+                logger.warning(f"Could not delete collection before document ingestion for session {session_id}: {e}")
+            session.vector_store = None
+        else:
+            collection_name = f"vortex_rag_{session_id}"
             try:
-                shutil.rmtree(settings.chroma_db_dir)
-                logger.info(f"Cleared persistent Chroma DB directory: {settings.chroma_db_dir}")
-            except Exception as e:
-                logger.warning(f"Could not remove persistent Chroma DB directory: {e}. Re-initializing over it.")
+                # Direct cleanup of existing collection with the same name if any
+                temp_vs = Chroma(
+                    collection_name=collection_name,
+                    embedding_function=self.embeddings,
+                    persist_directory=settings.chroma_db_dir
+                )
+                temp_vs.delete_collection()
+                logger.info(f"Deleted pre-existing Chroma collection '{collection_name}' to clean up.")
+            except Exception:
+                pass
 
         # Load PDF pages
         if not os.path.exists(file_path):
@@ -139,10 +203,12 @@ class RAGPipeline:
         if settings.retriever_search_type == "mmr":
             search_kwargs["lambda_mult"] = settings.retriever_lambda_mult
 
-        if settings.use_parent_retriever:
-            logger.info("Using ParentDocumentRetriever for advanced context retrieval.")
+        collection_name = f"vortex_rag_{session_id}"
 
-            self.docstore = InMemoryStore()
+        if settings.use_parent_retriever:
+            logger.info(f"Using ParentDocumentRetriever for advanced context retrieval in session {session_id}.")
+
+            session.docstore = InMemoryStore()
 
             child_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=settings.child_chunk_size, chunk_overlap=settings.child_chunk_overlap
@@ -151,15 +217,15 @@ class RAGPipeline:
                 chunk_size=settings.parent_chunk_size, chunk_overlap=settings.parent_chunk_overlap
             )
 
-            self.vector_store = Chroma(
-                collection_name="vortex_parent_rag",
+            session.vector_store = Chroma(
+                collection_name=collection_name,
                 embedding_function=self.embeddings,
                 persist_directory=settings.chroma_db_dir,
             )
 
-            self.retriever = ParentDocumentRetriever(
-                vectorstore=self.vector_store,
-                docstore=self.docstore,
+            session.retriever = ParentDocumentRetriever(
+                vectorstore=session.vector_store,
+                docstore=session.docstore,
                 child_splitter=child_splitter,
                 parent_splitter=parent_splitter,
                 search_type=settings.retriever_search_type,
@@ -167,24 +233,24 @@ class RAGPipeline:
             )
 
             # ParentDocumentRetriever automatically splits the original documents and populates stores
-            self.retriever.add_documents(documents)
-            logger.info("ParentDocumentRetriever setup and document ingestion complete.")
+            session.retriever.add_documents(documents)
+            logger.info(f"ParentDocumentRetriever setup and document ingestion complete for session {session_id}.")
         else:
-            logger.info("Using standard document retriever.")
+            logger.info(f"Using standard document retriever in session {session_id}.")
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=settings.parent_chunk_size, chunk_overlap=settings.parent_chunk_overlap
             )
             texts = text_splitter.split_documents(documents)
             logger.info(f"Document split into {len(texts)} chunks.")
 
-            logger.info(f"Loading chunks into Chroma DB at: {settings.chroma_db_dir}")
-            self.vector_store = Chroma.from_documents(
-                texts, embedding=self.embeddings, persist_directory=settings.chroma_db_dir
+            logger.info(f"Loading chunks into Chroma DB collection '{collection_name}' at: {settings.chroma_db_dir}")
+            session.vector_store = Chroma.from_documents(
+                texts, embedding=self.embeddings, persist_directory=settings.chroma_db_dir, collection_name=collection_name
             )
-            self.retriever = self.vector_store.as_retriever(
+            session.retriever = session.vector_store.as_retriever(
                 search_type=settings.retriever_search_type, search_kwargs=search_kwargs
             )
-            logger.info("Standard retriever setup complete.")
+            logger.info(f"Standard retriever setup complete for session {session_id}.")
 
         # Build QA Retrieval Chain
         prompt_template = """Use the following pieces of context to answer the question at the end.
@@ -199,44 +265,56 @@ Helpful Answer:"""
 
         PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
-        self.qa_chain = RetrievalQA.from_chain_type(
+        session.qa_chain = RetrievalQA.from_chain_type(
             llm=self.llm_hub,
             chain_type="stuff",
-            retriever=self.retriever,
+            retriever=session.retriever,
             return_source_documents=False,
             input_key="question",
             chain_type_kwargs={"prompt": PROMPT},
         )
-        self.current_pdf = os.path.basename(file_path)
+        session.current_pdf = os.path.basename(file_path)
         # Clear chat history for the new document
-        self.chat_history = []
-        logger.info("RetrievalQA chain generated and ready.")
+        session.chat_history = []
+        logger.info(f"RetrievalQA chain generated and ready for session {session_id}.")
 
-    def ask_question(self, question: str) -> str:
+    def ask_question(self, question: str, session_id: str = "default") -> str:
         """Queries the retrieval QA chain and appends exchange to chat history."""
-        if not self.qa_chain:
+        session = self.get_session(session_id)
+        if not session.qa_chain:
             raise ValueError("No PDF document loaded. Please upload a PDF file first.")
 
         if not question or not question.strip():
             raise ValueError("Question prompt cannot be empty.")
 
-        logger.info(f"Invoking RAG pipeline QA chain for question: '{question}'")
-        output = self.qa_chain.invoke({"question": question, "chat_history": self.chat_history})
+        logger.info(f"Invoking RAG pipeline QA chain for session {session_id}, question: '{question}'")
+        output = session.qa_chain.invoke({"question": question, "chat_history": session.chat_history})
         answer = output["result"]
 
         # Update session chat history
-        self.chat_history.append((question, answer))
-        logger.info("Updated chat history.")
+        session.chat_history.append((question, answer))
+        logger.info(f"Updated chat history for session {session_id}.")
         return answer.strip()
 
-    def reset(self):
+    def reset(self, session_id: str = "default"):
         """Resets the pipeline context, clearing the active QA chain, document, and chat history."""
-        self.qa_chain = None
-        self.current_pdf = None
-        self.chat_history = []
-        self.docstore = None
-        self.retriever = None
-        logger.info("RAG pipeline state cleared successfully.")
+        if session_id in self.sessions:
+            session = self.sessions[session_id]
+            # Clean up Chroma collection for this session
+            if session.vector_store:
+                try:
+                    session.vector_store.delete_collection()
+                except Exception as e:
+                    logger.warning(f"Could not delete collection for session {session_id} on reset: {e}")
+
+            # Clear references
+            session.qa_chain = None
+            session.current_pdf = None
+            session.chat_history = []
+            session.docstore = None
+            session.retriever = None
+            session.vector_store = None
+            logger.info(f"RAG pipeline state cleared successfully for session {session_id}.")
 
 
 # Singleton instance of RAG pipeline
