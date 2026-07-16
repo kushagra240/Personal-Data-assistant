@@ -9,14 +9,13 @@ Reuses the core application architecture for consistent processing and logic.
 import argparse
 import logging
 import os
-import sys
+
+from app.config import settings
+from app.services.rag_service import rag_pipeline
 
 # Set logging level to warning for clean CLI output unless requested otherwise
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
-from app.config import settings
-from app.services.rag_service import rag_pipeline
 
 # ANSI Color codes for clean and beautiful terminal output
 BLUE = "\033[94m"
