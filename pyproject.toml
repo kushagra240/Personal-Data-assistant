@@ -2,14 +2,12 @@
 target-version = "py310"
 line-length = 120
 
-# Exclude patterns
 exclude = [
     ".git",
     ".venv",
     "__pycache__",
     "data",
-    "chroma_db",
-    "chatbot_rag.py"
+    "chroma_db"
 ]
 
 [tool.ruff.lint]
