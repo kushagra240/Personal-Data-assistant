@@ -15,9 +15,6 @@ import sys
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Add current directory to path
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
 from app.config import settings
 from app.services.rag_service import rag_pipeline
 
@@ -34,11 +31,11 @@ CYAN = "\033[96m"
 def print_banner():
     banner = rf"""{BOLD}{CYAN}
 ============================================================
-      _    __           _             _    ___  
-     | |  / /__  ____ _|_|____ __  __| |  / / \ 
-     | | / / _ \/ __/ __/ / __ ` / / _  | / /__\ 
-     | |/ / (_) / / / /_/ / /_/ / / /_/ |/ /____\ 
-     |___/\___//_/  \__/_/\____/  \____//_/     
+      _    __           _             _    ___
+     | |  / /__  ____ _|_|____ __  __| |  / / \
+     | | / / _ \/ __/ __/ / __ ` / / _  | / /__\
+     | |/ / (_) / / / /_/ / /_/ / / /_/ |/ /____\
+     |___/\___//_/  \__/_/\____/  \____//_/
                 Vortex AI RAG Chatbot CLI
 ============================================================{RESET}
   * Embedding Model: {BLUE}{settings.embedding_model_id}{RESET}
