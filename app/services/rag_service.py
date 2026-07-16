@@ -181,7 +181,7 @@ class RAGPipeline:
                 temp_vs = Chroma(
                     collection_name=collection_name,
                     embedding_function=self.embeddings,
-                    persist_directory=settings.chroma_db_dir
+                    persist_directory=settings.chroma_db_dir,
                 )
                 temp_vs.delete_collection()
                 logger.info(f"Deleted pre-existing Chroma collection '{collection_name}' to clean up.")
@@ -245,7 +245,10 @@ class RAGPipeline:
 
             logger.info(f"Loading chunks into Chroma DB collection '{collection_name}' at: {settings.chroma_db_dir}")
             session.vector_store = Chroma.from_documents(
-                texts, embedding=self.embeddings, persist_directory=settings.chroma_db_dir, collection_name=collection_name
+                texts,
+                embedding=self.embeddings,
+                persist_directory=settings.chroma_db_dir,
+                collection_name=collection_name,
             )
             session.retriever = session.vector_store.as_retriever(
                 search_type=settings.retriever_search_type, search_kwargs=search_kwargs

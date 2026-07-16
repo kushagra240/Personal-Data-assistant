@@ -7,9 +7,9 @@ Reuses the core application architecture for consistent processing and logic.
 """
 
 import argparse
+import logging
 import os
 import sys
-import logging
 
 # Set logging level to warning for clean CLI output unless requested otherwise
 logging.basicConfig(level=logging.WARNING, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -32,7 +32,7 @@ CYAN = "\033[96m"
 
 
 def print_banner():
-    banner = f"""{BOLD}{CYAN}
+    banner = rf"""{BOLD}{CYAN}
 ============================================================
       _    __           _             _    ___  
      | |  / /__  ____ _|_|____ __  __| |  / / \ 
@@ -61,9 +61,7 @@ def print_help():
 
 def main():
     parser = argparse.ArgumentParser(description="Vortex AI RAG Chatbot CLI")
-    parser.add_argument(
-        "-f", "--file", type=str, help="Path to the PDF document to process on start"
-    )
+    parser.add_argument("-f", "--file", type=str, help="Path to the PDF document to process on start")
     args = parser.parse_args()
 
     print_banner()
