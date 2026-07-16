@@ -104,7 +104,7 @@ def test_reset_session(client, mock_rag_pipeline):
     mock_rag_pipeline.chat_history = [("Query", "Answer")]
 
     # Define custom reset mock since the fixture overrides methods
-    def mock_reset():
+    def mock_reset(*args, **kwargs):
         mock_rag_pipeline.qa_chain = None
         mock_rag_pipeline.current_pdf = None
         mock_rag_pipeline.chat_history = []
