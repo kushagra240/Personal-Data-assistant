@@ -1,11 +1,12 @@
 import os
+import shutil
 
 import torch
 
 # Imports for LangChain RAG pipeline
 from langchain.chains import RetrievalQA
 from langchain.retrievers import ParentDocumentRetriever
-from langchain.storage import InMemoryStore
+from langchain.storage import LocalFileStore, create_kv_docstore
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import PromptTemplate
@@ -36,6 +37,7 @@ class RAGPipeline:
     def get_session(self, session_id: str) -> SessionState:
         if session_id not in self.sessions:
             self.sessions[session_id] = SessionState(session_id)
+            self.attempt_restore_session(session_id)
         return self.sessions[session_id]
 
     @property
@@ -86,8 +88,119 @@ class RAGPipeline:
     def vector_store(self, value):
         self.get_session("default").vector_store = value
 
+    def attempt_restore_session(self, session_id: str) -> bool:
+        """Attempts to recover a previously indexed session and chat history from disk."""
+        session = self.sessions[session_id]
+        metadata_path = os.path.join(settings.chroma_db_dir, f"metadata_{session_id}.json")
+        if not os.path.exists(metadata_path):
+            return False
+
+        try:
+            import json
+            with open(metadata_path, "r", encoding="utf-8") as f:
+                metadata = json.load(f)
+
+            current_pdf = metadata.get("current_pdf")
+            chat_history = metadata.get("chat_history", [])
+
+            if not current_pdf:
+                return False
+
+            logger.info(f"Restoring RAG session '{session_id}' context from disk...")
+            self.init_llm()
+
+            collection_name = f"vortex_rag_{session_id}"
+            session.vector_store = Chroma(
+                collection_name=collection_name,
+                embedding_function=self.embeddings,
+                persist_directory=settings.chroma_db_dir,
+            )
+
+            # Check if collection actually exists and has elements
+            if session.vector_store._collection.count() == 0:
+                logger.warning(f"Chroma collection '{collection_name}' is empty on disk. Restoral aborted.")
+                session.vector_store = None
+                return False
+
+            search_kwargs = {"k": settings.retriever_k}
+            if settings.retriever_search_type == "mmr":
+                search_kwargs["lambda_mult"] = settings.retriever_lambda_mult
+
+            if settings.use_parent_retriever:
+                docstore_dir = os.path.join(settings.chroma_db_dir, f"docstore_{session_id}")
+                os.makedirs(docstore_dir, exist_ok=True)
+                fs_store = LocalFileStore(docstore_dir)
+                session.docstore = create_kv_docstore(fs_store)
+
+                child_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=settings.child_chunk_size, chunk_overlap=settings.child_chunk_overlap
+                )
+                parent_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=settings.parent_chunk_size, chunk_overlap=settings.parent_chunk_overlap
+                )
+
+                session.retriever = ParentDocumentRetriever(
+                    vectorstore=session.vector_store,
+                    docstore=session.docstore,
+                    child_splitter=child_splitter,
+                    parent_splitter=parent_splitter,
+                    search_type=settings.retriever_search_type,
+                    search_kwargs=search_kwargs,
+                )
+            else:
+                session.retriever = session.vector_store.as_retriever(
+                    search_type=settings.retriever_search_type, search_kwargs=search_kwargs
+                )
+
+            # Build QA Retrieval Chain
+            prompt_template = """Use the following pieces of context to answer the question at the end.
+If you don't know the answer, just say that you don't know, don't try to make up an answer.
+Provide a detailed, comprehensive, and well-structured response. Organize your answer with clear points, bullet points, or sections if appropriate.
+
+Context:
+{context}
+
+Question: {question}
+Helpful Answer:"""
+            PROMPT = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+
+            session.qa_chain = RetrievalQA.from_chain_type(
+                llm=self.llm_hub,
+                chain_type="stuff",
+                retriever=session.retriever,
+                return_source_documents=False,
+                input_key="question",
+                chain_type_kwargs={"prompt": PROMPT},
+            )
+            session.current_pdf = current_pdf
+            session.chat_history = chat_history
+            logger.info(f"Successfully restored RAG session '{session_id}' from disk (PDF: {current_pdf}).")
+            return True
+        except Exception as e:
+            logger.warning(f"Could not restore session '{session_id}' from disk: {e}", exc_info=True)
+            return False
+
+    def _save_session_metadata(self, session_id: str):
+        """Saves current PDF context name and chat history for the session to disk."""
+        session = self.get_session(session_id)
+        metadata_path = os.path.join(settings.chroma_db_dir, f"metadata_{session_id}.json")
+        try:
+            import json
+            os.makedirs(settings.chroma_db_dir, exist_ok=True)
+            metadata = {
+                "current_pdf": session.current_pdf,
+                "chat_history": session.chat_history,
+            }
+            with open(metadata_path, "w", encoding="utf-8") as f:
+                json.dump(metadata, f, ensure_ascii=False, indent=2)
+            logger.info(f"Saved session metadata to disk for session '{session_id}'.")
+        except Exception as e:
+            logger.warning(f"Could not save session metadata for session '{session_id}': {e}")
+
     def init_llm(self):
         """Initializes the embeddings model and choice of LLM provider."""
+        if self.embeddings and self.llm_hub:
+            return
         logger.info(f"Initializing LLM with provider: {settings.llm_provider}")
 
         # Check GPU availability for embeddings computation
@@ -160,8 +273,7 @@ class RAGPipeline:
 
     def process_document(self, file_path: str, session_id: str = "default"):
         """Processes a PDF document, splits it, embeds chunks, and builds a QA Retrieval Chain."""
-        if not self.embeddings:
-            self.init_llm()
+        self.init_llm()
 
         session = self.get_session(session_id)
         logger.info(f"Starting document processing for session {session_id}, file: {file_path}")
@@ -208,7 +320,15 @@ class RAGPipeline:
         if settings.use_parent_retriever:
             logger.info(f"Using ParentDocumentRetriever for advanced context retrieval in session {session_id}.")
 
-            session.docstore = InMemoryStore()
+            docstore_dir = os.path.join(settings.chroma_db_dir, f"docstore_{session_id}")
+            if os.path.exists(docstore_dir):
+                try:
+                    shutil.rmtree(docstore_dir)
+                except Exception:
+                    pass
+            os.makedirs(docstore_dir, exist_ok=True)
+            fs_store = LocalFileStore(docstore_dir)
+            session.docstore = create_kv_docstore(fs_store)
 
             child_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=settings.child_chunk_size, chunk_overlap=settings.child_chunk_overlap
@@ -279,6 +399,7 @@ Helpful Answer:"""
         session.current_pdf = os.path.basename(file_path)
         # Clear chat history for the new document
         session.chat_history = []
+        self._save_session_metadata(session_id)
         logger.info(f"RetrievalQA chain generated and ready for session {session_id}.")
 
     def ask_question(self, question: str, session_id: str = "default") -> str:
@@ -296,6 +417,7 @@ Helpful Answer:"""
 
         # Update session chat history
         session.chat_history.append((question, answer))
+        self._save_session_metadata(session_id)
         logger.info(f"Updated chat history for session {session_id}.")
         return answer.strip()
 
@@ -317,7 +439,23 @@ Helpful Answer:"""
             session.docstore = None
             session.retriever = None
             session.vector_store = None
-            logger.info(f"RAG pipeline state cleared successfully for session {session_id}.")
+
+        # Clean up disk files
+        metadata_path = os.path.join(settings.chroma_db_dir, f"metadata_{session_id}.json")
+        if os.path.exists(metadata_path):
+            try:
+                os.remove(metadata_path)
+            except Exception as e:
+                logger.warning(f"Could not delete metadata file for session {session_id} on reset: {e}")
+
+        docstore_dir = os.path.join(settings.chroma_db_dir, f"docstore_{session_id}")
+        if os.path.exists(docstore_dir):
+            try:
+                shutil.rmtree(docstore_dir)
+            except Exception as e:
+                logger.warning(f"Could not delete docstore directory for session {session_id} on reset: {e}")
+
+        logger.info(f"RAG pipeline state cleared successfully for session {session_id}.")
 
 
 # Singleton instance of RAG pipeline
