@@ -178,6 +178,7 @@ def test_rag_pipeline_process_document_parent_retriever(
 @patch("app.services.rag_service.RetrievalQA")
 @patch("app.services.rag_service.HuggingFaceEmbeddings")
 @patch("app.services.rag_service.Chroma")
+@patch("app.services.rag_service.ParentDocumentRetriever")
 @patch("app.services.rag_service.create_kv_docstore")
 @patch("app.services.rag_service.LocalFileStore")
 @patch("app.services.rag_service.PyPDFLoader")
@@ -185,6 +186,7 @@ def test_rag_pipeline_session_persistence(
     mock_loader,
     mock_local_file_store,
     mock_create_kv_docstore,
+    mock_parent_retriever,
     mock_chroma,
     mock_embeddings,
     mock_retrieval_qa,
