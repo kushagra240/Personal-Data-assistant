@@ -97,6 +97,7 @@ class RAGPipeline:
 
         try:
             import json
+
             with open(metadata_path, "r", encoding="utf-8") as f:
                 metadata = json.load(f)
 
@@ -186,6 +187,7 @@ Helpful Answer:"""
         metadata_path = os.path.join(settings.chroma_db_dir, f"metadata_{session_id}.json")
         try:
             import json
+
             os.makedirs(settings.chroma_db_dir, exist_ok=True)
             metadata = {
                 "current_pdf": session.current_pdf,
